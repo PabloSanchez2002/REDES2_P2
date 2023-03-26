@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import os
 import sys
 import uuid
@@ -8,69 +9,87 @@ ERROR = 0
 OK = 1
 REGISTERED = 2
 
-def cliente(s,channel):
-    print("Estas registrado como el cliente: "+s)
-    print("Que quieres hacer: ")
-    print("1: Crear Pedido")
-    print("2: Ver Pedidos")
-    print("3: Cancelar Pedidos")
-    try:
-        opcion = int(input())
-        if opcion < 1 or opcion > 3:
+
+class Client(object):
+
+    def __init__(self):
+        self.connection = pika.BlockingConnection(
+            pika.ConnectionParameters(host='localhost'))
+
+        self.channel = self.connection.channel()
+
+        result = self.channel.queue_declare(queue='', exclusive=True)
+        self.callback_queue = result.method.queue
+
+        self.channel.basic_consume(
+            queue=self.callback_queue,
+            on_message_callback=self.on_response,
+            auto_ack=True)
+
+        self.response = None
+        self.corr_id = None
+
+    def login(self, s, channel):
+        print("Estas registrado como el cliente: "+s)
+        print("Que quieres hacer: ")
+        print("1: Crear Pedido")
+        print("2: Ver Pedidos")
+        print("3: Cancelar Pedidos")
+        try:
+            opcion = int(input())
+            if opcion < 1 or opcion > 3:
+                os.system('cls' if os.name == 'nt' else 'clear')
+                print("Opción no válida seleccione 1, 2 o 3")
+                self.login(self, s, channel)
+        except ValueError:
             os.system('cls' if os.name == 'nt' else 'clear')
             print("Opción no válida seleccione 1, 2 o 3")
-            cliente(s,channel)
-    except ValueError:
-        os.system('cls' if os.name == 'nt' else 'clear')
-        print("Opción no válida seleccione 1, 2 o 3")
-        cliente(s,channel)
-    except KeyboardInterrupt:
-        sys.exit(0)
+            self.login(self, s, channel)
+        except KeyboardInterrupt:
+            sys.exit(0)
 
-    
-    
-def registro(channel):
-    os.system('cls' if os.name == 'nt' else 'clear')
-    print("Introduce tu identificador de cliente: ", end ="")
-    s = input()
-    channel.basic_publish(exchange='', routing_key='rpc_queue',properties=pika.BasicProperties( reply_to=callback_queue, correlation_id=corr_id), body=s)
+    def on_response(self, ch, method, props, body):
+        if self.corr_id == props.correlation_id:
+            self.response = body
 
-    os.system('cls' if os.name == 'nt' else 'clear')
-    cliente(s,channel)
+    def call(self):
+        self.response = None
+        self.corr_id = str(uuid.uuid4())
+        print("Introduce tu identificador de cliente: ", end="")
+        s = input()
+        self.channel.basic_publish(
+            exchange='',
+            routing_key='rpc_queue',
+            properties=pika.BasicProperties(
+                reply_to=self.callback_queue,
+                correlation_id=self.corr_id,
+            ),
+            body=s)
+        self.connection.process_data_events(time_limit=None)
+        return self.response
 
-def crear_cola():
-    connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
-    channel = connection.channel()
-    result = channel.queue_declare(queue='login', exclusive=True, durable=False, auto_delete=True)
-    callback_queue = result.method.queue
+        # os.system('cls' if os.name == 'nt' else 'clear')
+        # self.login(s, self.channel)
 
-    channel.basic_consume(
-        queue=callback_queue, on_message_callback=login_response_callback, auto_ack=True)
+    def login_response(self, response):
+        if (response == ERROR):
+            print("Error al registrar")
 
-    corr_id = str(uuid.uuid4())
+        elif (response == OK):
+            print("Cliente registrado")
 
-    return channel, connection
+        elif (response == REGISTERED):
+            print("Cliente registrado")
+        else:
+            print("Error al registrar, se recibio:" + response)
 
 
-def login_response_callback(ch, method, props, body):
-    response = body
-    if(response == ERROR):
-        print("Error al registrar")
-    
-    elif(response == OK):
-        print("Cliente registrado")
-    
-    elif(response == REGISTERED):
-        print("Cliente registrado")
-    
-    
 def main():
-    channel, connection = crear_cola()
-    registro(channel)
-
-
-
-    connection.close()
+    cliente = Client()
+    response = cliente.call()
+    print(response.decode())
+    cliente.login_response(str(response.decode()))
+    cliente.connection.close()
 
 
 if __name__ == '__main__':
