@@ -1,10 +1,10 @@
-    #Para ver las listas de mensajes y si contiene mensajes
-    sudo rabbitmqctl list_queues    
+#Para ver las listas de mensajes y si contiene mensajes
+sudo rabbitmqctl list_queues    
 
-    #Correr esto para que vaya el rabitMQ
-    sudo apt-get install rabbitmq-server
-    sudo systemctl start rabbitmq-server
-    sudo systemctl enable rabbitmq-server
+#Correr esto para que vaya el rabitMQ
+sudo apt-get install rabbitmq-server
+sudo systemctl start rabbitmq-server
+sudo systemctl enable rabbitmq-server
 
 
 
