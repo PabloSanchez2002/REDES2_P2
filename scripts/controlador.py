@@ -22,80 +22,107 @@ def create_database():
 
     # Creating a cursor object using the cursor() method
     cursor = con.cursor()
-    sql = '''DROP database P2Redes'''
     # Drop database
-    cursor.execute(sql)
+    cursor.execute("DROP database IF EXISTS P2Redes")
     print("Database deleted successfully........")
 
     # Preparing query to create a database
-    sql = '''CREATE database P2Redes'''
+    
     # Creating a database
-    cursor.execute(sql)
+    cursor.execute("CREATE database P2Redes")
     print("Database created successfully........")
-
-    cursor.execute("DROP TABLE IF EXISTS PEDIDOS")
-    # Creating table as per requirement
-    sql = '''CREATE TABLE PEDIDOS(
-    ID CHAR(20) NOT NULL,
-    PRODUCTO CHAR(20),
-    CANTIDAD INT
-    )'''
-
-    cursor.execute(sql)
-    print("Table PEDIDOS created successfully........")
-    cursor.execute("DROP TABLE IF EXISTS CLIENTES")
-
-    # Creating table as per requirement
-    sql = '''CREATE TABLE CLIENTES(
-    NOMBRE CHAR(30) NOT NULL
-    )'''
-
-    cursor.execute(sql)
-    print("Table CLIENTES created successfully........")
 
     con.commit()
     # Closing the connection
     con.close()
 
+def create_tables():
+    con = psycopg2.connect(
+        database="p2redes",
+        user="postgres",
+        password="password",
+        host="localhost",
+        port='5432'
+    )
+    con.autocommit = True
+
+    # Creating a cursor object using the cursor() method
+    cursor = con.cursor()
+
+    cursor.execute("DROP TABLE IF EXISTS CLIENTES")
+
+    # Creating table as per requirement
+
+    cursor.execute("CREATE TABLE CLIENTES( \
+        NOMBRE CHAR(30) NOT NULL UNIQUE)")
+    print("Table CLIENTES created successfully........")
+
+    cursor.execute("DROP TABLE IF EXISTS PEDIDOS")
+    # Creating table as per requirement
+
+    cursor.execute("CREATE TABLE PEDIDOS( \
+        ID SERIAL, \
+        PRODUCTO CHAR(20), \
+        CANTIDAD INT, \
+        CLIENT CHAR(30) NOT NULL,\
+        CONSTRAINT fk_cliente FOREIGN KEY(CLIENT) REFERENCES CLIENTES(NOMBRE) );")
+    print("Table PEDIDOS created successfully........")
+
+
+
+    con.commit()
+    # Closing the connection
+    con.close()
 
 def on_request(ch, method, props, body):
-    usr = body.decode()
-    #con = psycopg2.connect(
-    #    database="postgres",
-    #    user="postgres",
-    #    password="password",
-    #    host="localhost",
-    #    port='5432'
-    #)
-    #cursor_obj = con.cursor()
-    #cursor_obj.execute(
-    #    "SELECT COUNT(*) as count FROM CLIENTES WHERE NOMBRE = \"" + usr + "\"")
-    #con.commit()
-    #result = cursor_obj.fetchall()
-    #if (len(result) > 1):
-    #   # Closing the connection
-    #   con.close()
-    #   response = ERROR
-    #   # Mandamos mensaje de error
-    #elif (len(result) == 0):
-    #   cursor_obj.execute("INSERT INTO CLIENTES VALUES (\"" + usr + "\")")
-    #   con.commit()
-    #   # Closing the connection
-    #   con.close()
-    #   response = REGISTERED
-    #elif (result[0][0] == 1):
-    #   # Closing the connection
-    #   con.close()
-    #   response = OK
-    #else:
-    #   response = ERROR
-    print("Request received:" + usr)
+    token = body.decode()
+    print("Request received:" + token)
     response = ERROR
+    mode = int(token[0])
+    token = token[1:len(token)]
+    print(token)
+    con = psycopg2.connect(
+        database="p2redes",
+        user="postgres",
+        password="password",
+        host="localhost",
+        port='5432'
+    )
+    cursor_obj = con.cursor()
+
+    if mode == 1:
+        cursor_obj.execute(
+            "SELECT COUNT(*) as count FROM CLIENTES WHERE NOMBRE = \'" + token + "\'")
+        result = cursor_obj.fetchall()
+        if (len(result) > 1):
+           # Closing the connection
+           con.close()
+           response = ERROR
+           # Mandamos mensaje de error
+        elif (result[0][0] == 0):
+           cursor_obj.execute("INSERT INTO CLIENTES VALUES (\'" + token + "\')")
+           con.commit()
+           # Closing the connection
+           con.close()
+           response = REGISTERED
+        elif (result[0][0] == 1):
+           # Closing the connection
+           con.close()
+           response = OK
+        else:
+           response = ERROR
+    elif mode == 2:
+        list_tokens = token.split("|")
+        print(list_tokens)
+        cursor_obj.execute(
+            "INSERT INTO PEDIDOS VALUES (\'1\',\'" + list_tokens[0] + "\', \'" + list_tokens[1] + "\', \'" + list_tokens[2] + "\')")
+        con.commit()
+        
     ch.basic_publish(exchange='',
-                     routing_key=props.reply_to,
-                     properties=pika.BasicProperties(
-                         correlation_id=props.correlation_id),
-                     body=str(response))
+                        routing_key=props.reply_to,
+                        properties=pika.BasicProperties(
+                            correlation_id=props.correlation_id),
+                        body=str(response))
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 
@@ -111,6 +138,7 @@ def main():
     channel.basic_consume(queue='rpc_queue', on_message_callback=on_request)
 
     create_database()
+    create_tables()
     print(" [x] Awaiting RPC requests")
     channel.start_consuming()
 
