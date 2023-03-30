@@ -8,6 +8,22 @@ ERROR = 0
 OK = 1
 REGISTERED = 2
 
+class Controlador(object):
+    def __init__(self):
+        self.connection = pika.BlockingConnection(
+            pika.ConnectionParameters(host='localhost'))
+
+        self.channel1 = self.connection.channel()
+
+        self.channel1.queue_declare(queue='rpc_queue_cliente')
+        self.channel1.basic_qos(prefetch_count=1)
+        self.channel1.basic_consume(
+            queue='rpc_queue_cliente', on_message_callback=on_request)
+        create_database()
+        create_tables()
+        print(" [x] Awaiting RPC requests")
+        self.channel1.start_consuming()
+
 
 def create_database():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -157,19 +173,7 @@ def on_request(ch, method, props, body):
 
 def main():
 
-    connection = pika.BlockingConnection(
-        pika.ConnectionParameters(host='localhost'))
-
-    channel = connection.channel()
-
-    channel.queue_declare(queue='rpc_queue')
-    channel.basic_qos(prefetch_count=1)
-    channel.basic_consume(queue='rpc_queue', on_message_callback=on_request)
-
-    create_database()
-    create_tables()
-    print(" [x] Awaiting RPC requests")
-    channel.start_consuming()
+    controlador = Controlador()
 
 
 if __name__ == '__main__':

@@ -27,8 +27,11 @@ class Client(object):
             on_message_callback=self.on_response,
             auto_ack=True)
 
-        self.response = None
         self.corr_id = None
+
+        self.response = self.login()
+        self.login_response(str(self.response.decode()))
+        self.connection.close()
 
     def menu(self):
         print("//--------------------------------------//")
@@ -80,7 +83,7 @@ class Client(object):
         s = ("1"+s)
         self.channel.basic_publish(
             exchange='',
-            routing_key='rpc_queue',
+            routing_key='rpc_queue_cliente',
             properties=pika.BasicProperties(
                 reply_to=self.callback_queue,
                 correlation_id=self.corr_id,
@@ -116,7 +119,7 @@ class Client(object):
 
         self.channel.basic_publish(
             exchange='',
-            routing_key='rpc_queue',
+            routing_key='rpc_queue_cliente',
             properties=pika.BasicProperties(
                 reply_to=self.callback_queue,
                 correlation_id=self.corr_id,
@@ -134,7 +137,7 @@ class Client(object):
 
         self.channel.basic_publish(
             exchange='',
-            routing_key='rpc_queue',
+            routing_key='rpc_queue_cliente',
             properties=pika.BasicProperties(
                 reply_to=self.callback_queue,
                 correlation_id=self.corr_id,
@@ -154,7 +157,7 @@ class Client(object):
 
         self.channel.basic_publish(
             exchange='',
-            routing_key='rpc_queue',
+            routing_key='rpc_queue_cliente',
             properties=pika.BasicProperties(
                 reply_to=self.callback_queue,
                 correlation_id=self.corr_id,
@@ -171,11 +174,7 @@ class Client(object):
 
 def main():
     cliente = Client()
-    response = cliente.login()
-    cliente.login_response(str(response.decode()))
-    cliente.connection.close()
-
-
+    
 if __name__ == '__main__':
     try:
         main()
