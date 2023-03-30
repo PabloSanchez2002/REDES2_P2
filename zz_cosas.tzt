@@ -3,6 +3,8 @@ sudo rabbitmqctl list_queues
 
 #Correr esto para que vaya el rabitMQ
 sudo apt-get install rabbitmq-server
+
+sudo systemctl stop rabbitmq-server
 sudo systemctl start rabbitmq-server
 sudo systemctl enable rabbitmq-server
 

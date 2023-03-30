@@ -10,6 +10,7 @@ REGISTERED = 2
 
 
 def create_database():
+    os.system('cls' if os.name == 'nt' else 'clear')
     con = psycopg2.connect(
         database="postgres",
         user="postgres",
@@ -54,17 +55,18 @@ def create_tables():
     # Creating table as per requirement
 
     cursor.execute("CREATE TABLE CLIENTES( \
-        NOMBRE CHAR(30) NOT NULL UNIQUE)")
+        NOMBRE TEXT NOT NULL UNIQUE)")
     print("Table CLIENTES created successfully........")
 
     cursor.execute("DROP TABLE IF EXISTS PEDIDOS")
     # Creating table as per requirement
 
     cursor.execute("CREATE TABLE PEDIDOS( \
-        ID SERIAL, \
-        PRODUCTO CHAR(20), \
+        ID SERIAL PRIMARY KEY, \
+        PRODUCTO TEXT, \
         CANTIDAD INT, \
-        CLIENT CHAR(30) NOT NULL,\
+        CLIENT TEXT NOT NULL,\
+        STATUS TEXT NOT NULL,\
         CONSTRAINT fk_cliente FOREIGN KEY(CLIENT) REFERENCES CLIENTES(NOMBRE) );")
     print("Table PEDIDOS created successfully........")
 
@@ -80,7 +82,6 @@ def on_request(ch, method, props, body):
     response = ERROR
     mode = int(token[0])
     token = token[1:len(token)]
-    print(token)
     con = psycopg2.connect(
         database="p2redes",
         user="postgres",
@@ -97,7 +98,6 @@ def on_request(ch, method, props, body):
         if (len(result) > 1):
            # Closing the connection
            con.close()
-           response = ERROR
            # Mandamos mensaje de error
         elif (result[0][0] == 0):
            cursor_obj.execute("INSERT INTO CLIENTES VALUES (\'" + token + "\')")
@@ -113,11 +113,40 @@ def on_request(ch, method, props, body):
            response = ERROR
     elif mode == 2:
         list_tokens = token.split("|")
-        print(list_tokens)
+        print("Pedido recibido: "+str(list_tokens))
         cursor_obj.execute(
-            "INSERT INTO PEDIDOS VALUES (\'1\',\'" + list_tokens[0] + "\', \'" + list_tokens[1] + "\', \'" + list_tokens[2] + "\')")
+            "INSERT INTO PEDIDOS VALUES (DEFAULT ,\'" + list_tokens[0] + "\', \'" + list_tokens[1] + "\', \'" + list_tokens[2] + "\', 'PROCESSING')")
         con.commit()
+        response = OK
+
+    elif mode == 3:
+        cursor_obj.execute(
+            "SELECT * FROM PEDIDOS WHERE CLIENT = \'" + token + "\'")
+        response = cursor_obj.fetchall()
         
+    elif mode == 4:
+        list_tokens = token.split("|")
+        # count entryes in table pedidos where where client = list_tokens[0] and ID = list_tokens[1] and status is PROCESSING
+        cursor_obj.execute(
+            "SELECT COUNT(*) as count FROM PEDIDOS WHERE CLIENT = \'" + list_tokens[0] + "\' AND ID = \'" + list_tokens[1] + "\' AND STATUS <> 'PROCESSING'")
+        result = cursor_obj.fetchall()
+        if (result[0][0] >=1):
+            response = ERROR
+        else:
+            cursor_obj.execute(
+                "UPDATE PEDIDOS SET STATUS = 'CANCELLED' WHERE CLIENT = \'" + list_tokens[0] + "\' AND ID = \'" + list_tokens[1] + "\' AND STATUS = 'PROCESSING'")
+            response = OK
+        con.commit()    
+        
+        
+
+        
+
+    else:
+        response = ERROR
+    
+    con.close()
+
     ch.basic_publish(exchange='',
                         routing_key=props.reply_to,
                         properties=pika.BasicProperties(

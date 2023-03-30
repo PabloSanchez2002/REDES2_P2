@@ -31,21 +31,31 @@ class Client(object):
         self.corr_id = None
 
     def menu(self):
-        print("Estas registrado como el cliente: "+ self.nombre)
+        print("//--------------------------------------//")
+        print("Estas registrado como el cliente: "+ self.nombre + "\n")
         print("Que quieres hacer: ")
         print("1: Crear Pedido")
         print("2: Ver Pedidos")
         print("3: Cancelar Pedidos")
+        print("Introduce numero: ", end="")
         try:
             opcion = int(input())
             if opcion < 1 or opcion > 3:
                 os.system('cls' if os.name == 'nt' else 'clear')
                 print("Opción no válida seleccione 1, 2 o 3")
                 self.menu()
+
             elif opcion == 1:
-                self.new_pedido()
+                response = int(self.new_pedido())
+                if(response == OK):
+                    print("Pedido recibido por el controlador\n\n")
+                if (response == ERROR):
+                    print("Error al recibir pedido\n\n")
+                self.menu()
+
             elif opcion == 2:
                 self.ver_pedidos()
+
             elif opcion == 3:
                 self.cancelar_pedido()
 
@@ -115,10 +125,48 @@ class Client(object):
         self.connection.process_data_events(time_limit=None)
 
         print("Pedido enviado!!")
-        self.connection.process_data_events(time_limit=None)
         return self.response
 
+    def ver_pedidos(self):
+        os.system('cls' if os.name == 'nt' else 'clear')
+        print("Ver pedidos")
+        pedido = ("3" + self.nombre)
 
+        self.channel.basic_publish(
+            exchange='',
+            routing_key='rpc_queue',
+            properties=pika.BasicProperties(
+                reply_to=self.callback_queue,
+                correlation_id=self.corr_id,
+            ),
+            body=pedido)
+        self.connection.process_data_events(time_limit=None)
+
+        print(self.response.decode())
+        self.menu()
+
+    def cancelar_pedido(self):
+        os.system('cls' if os.name == 'nt' else 'clear')
+        print("Cancelar pedido")
+        print("Introduce indice de pedido que quieras cancelar: ", end = "")
+        id = input()
+        pedido = ("4" + self.nombre + "|" + id)
+
+        self.channel.basic_publish(
+            exchange='',
+            routing_key='rpc_queue',
+            properties=pika.BasicProperties(
+                reply_to=self.callback_queue,
+                correlation_id=self.corr_id,
+            ),
+            body=pedido)
+        self.connection.process_data_events(time_limit=None)
+
+        if self.response.decode() == OK:
+            print("Pedido cancelado correctamente")
+        else:
+            print("Error al cancelar pedido")
+        self.menu()
 
 
 def main():
