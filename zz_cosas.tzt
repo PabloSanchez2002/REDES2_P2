@@ -26,14 +26,11 @@ pip install pika
 debe contestar con un mensaje indicando que no está registrado. Sin embargo, NO hace falta modelar los productos, no hay que tener un registro
 de productos válidos.
 
-- Hacer pedidos, ver sus pedidos y cancelar un pedido.
-
-- simulamos con una espera aleatoria de entre 5 y 10 segundos y probabilidad p_almacen
+- cola controlador-robots asincrona.
 
 - Entrega con probabilidad p_entrega espera de 10 y 20 segundos
 
 • El ID del cliente que realiza el pedido.
-• Los IDs de los productos que lo conforman.
 • El estado de dicho pedido en función de en qué etapa del proceso de envío se encuentra (ej.: en el almacén, en la cinta...)
 
 • Cancelación de un pedido solo es posible mientras el mismo se encuentre aún dentro de las instalaciones de Saimazoom, es decir, antes de

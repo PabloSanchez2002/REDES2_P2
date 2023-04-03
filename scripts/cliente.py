@@ -4,7 +4,9 @@ import re
 import sys
 import uuid
 import pika
-import time
+import _thread
+import asyncio
+
 
 ERROR = 0
 OK = 1
@@ -17,22 +19,25 @@ class Client(object):
         self.connection = pika.BlockingConnection(
             pika.ConnectionParameters(host='localhost'))
 
-        self.channel = self.connection.channel()
-        self.nombre = None
-
-        result = self.channel.queue_declare(queue='rpc_queue_cliente')
+        self.channel1 = self.connection.channel()
+        result = self.channel1.queue_declare(queue='rpc_queue_cliente')
         self.callback_queue = result.method.queue
-
-        self.channel.basic_consume(
+        self.channel1.basic_consume(
             queue=self.callback_queue,
             on_message_callback=self.on_response,
             auto_ack=True)
+        
 
+        self.nombre = None
         self.corr_id = None
-
-        self.response = self.login()
-        self.login_response(str(self.response.decode()))
+        self.response = None
+        
+        self.login_response(str(self.login().decode()))
         self.connection.close()
+
+    def on_response(self, ch, method, props, body):
+        if self.corr_id == props.correlation_id:
+            self.response = body
 
     def menu(self):
         print("//--------------------------------------//")
@@ -44,17 +49,13 @@ class Client(object):
         print("Introduce numero: ", end="")
         try:
             opcion = int(input())
-            if opcion < 1 or opcion > 3:
-                os.system('cls' if os.name == 'nt' else 'clear')
-                print("Opción no válida seleccione 1, 2 o 3")
-                self.menu()
-
-            elif opcion == 1:
-                response = int(self.new_pedido())
-                if(response == OK):
-                    print("Pedido recibido por el controlador\n\n")
-                if (response == ERROR):
-                    print("Error al recibir pedido\n\n")
+            if opcion == 1:
+                #response = int(self.new_pedido())
+                #if(response == OK):
+                #    print("Pedido recibido por el controlador\n\n")
+                #if (response == ERROR):
+                #    print("Error al recibir pedido\n\n")
+                self.new_pedido()
                 self.menu()
 
             elif opcion == 2:
@@ -70,10 +71,7 @@ class Client(object):
         except KeyboardInterrupt:
             sys.exit(0)
 
-    def on_response(self, ch, method, props, body):
-        if self.corr_id == props.correlation_id:
-            self.response = body
-        
+    
 
     def login(self):
         os.system('cls' if os.name == 'nt' else 'clear')
@@ -83,7 +81,7 @@ class Client(object):
         s = input()
         self.nombre = s
         s = ("1"+s)
-        self.channel.basic_publish(
+        self.channel1.basic_publish(
             exchange='',
             routing_key='rpc_queue_cliente',
             properties=pika.BasicProperties(
@@ -95,7 +93,6 @@ class Client(object):
         return self.response
 
         
-
     def login_response(self, response):
         response = int(response)
         if (response == ERROR):
@@ -119,7 +116,7 @@ class Client(object):
         cantidad = input()
         pedido = ("2" + product + "|" + cantidad + "|" + self.nombre)
 
-        self.channel.basic_publish(
+        self.channel1.basic_publish(
             exchange='',
             routing_key='rpc_queue_cliente',
             properties=pika.BasicProperties(
@@ -127,17 +124,18 @@ class Client(object):
                 correlation_id=self.corr_id,
             ),
             body=pedido)
-        self.connection.process_data_events(time_limit=None)
+        #self.connection.process_data_events(time_limit=None)
 
         print("Pedido enviado!!")
-        return self.response
+        print("Mira tus pedidos con '2' para obtener información del estado de estos")
+        #return self.response
 
     def ver_pedidos(self):
         os.system('cls' if os.name == 'nt' else 'clear')
         print("Ver pedidos")
         pedido = ("3" + self.nombre)
 
-        self.channel.basic_publish(
+        self.channel1.basic_publish(
             exchange='',
             routing_key='rpc_queue_cliente',
             properties=pika.BasicProperties(
@@ -163,7 +161,7 @@ class Client(object):
         id = input()
         pedido = ("4" + self.nombre + "|" + id)
 
-        self.channel.basic_publish(
+        self.channel1.basic_publish(
             exchange='',
             routing_key='rpc_queue_cliente',
             properties=pika.BasicProperties(

@@ -25,24 +25,29 @@ class Controlador(object):
         self.channel1.basic_consume(
             queue='rpc_queue_cliente', on_message_callback=self.on_request_client)
         
-        # Cola robots
+        # Cola envío robots
         self.channel2 = self.connection.channel()
-        self.channel2.queue_declare(queue='rpc_queue_robot')
-        #result1 = self.callback_queue1 = result1.method.queue
-        self.channel2.basic_consume(
-            queue='rpc_queue_robot',
+        self.channel2.queue_declare(queue='send_to_robot')
+        
+        # Cola respuesta robots
+        self.channel3 = self.connection.channel()
+        self.channel3.queue_declare(queue='return_from_robot')
+        
+        self.channel3.basic_consume(
+            queue='return_from_robot',
             on_message_callback=self.on_request_robot,
             auto_ack=True)
 
+        
         # Cola repartidores
-        self.channel3 = self.connection.channel()
-        result2 = self.channel3.queue_declare(
-            queue='rpc_queue_repartidor')
-        self.callback_queue2 = result2.method.queue
-        self.channel2.basic_consume(
-            queue=self.callback_queue2,
-            on_message_callback=self.on_request_repartidor,
-            auto_ack=True)
+        #self.channel3 = self.connection.channel()
+        #result2 = self.channel3.queue_declare(
+        #    queue='rpc_queue_repartidor')
+        #self.callback_queue2 = result2.method.queue
+        #self.channel2.basic_consume(
+        #    queue=self.callback_queue2,
+        #    on_message_callback=self.on_request_repartidor,
+        #    auto_ack=True)
         
 
         self.corr_id = None
@@ -152,10 +157,10 @@ class Controlador(object):
         con.close()
 
         ch.basic_publish(exchange='',
-                            routing_key=props.reply_to,
-                            properties=pika.BasicProperties(
-                                correlation_id=props.correlation_id),
-                            body=str(response))
+                         routing_key=props.reply_to,
+                         properties=pika.BasicProperties(
+                             correlation_id=props.correlation_id),
+                         body=str(response))
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
 
@@ -185,8 +190,8 @@ class Controlador(object):
         result = cursor_obj.fetchall()
         con.commit()
         # We send a mesasge to the rebot
-        #self.send_Robot(result[0][0])
-        return OK
+        return self.send_Robot(result[0][0])
+         
         
     
     def listar_Pedidos(self, token, cursor_obj):
@@ -208,59 +213,23 @@ class Controlador(object):
             return OK
         
 
-
-    def on_request_robot(self, ch, method, props, body):
-        token = body.decode()
-        print("Rob message received:" + token)
-        response = ERROR
-        mode = int(token[0])
-        token = token[1:len(token)]
-        con = psycopg2.connect(
-            database="p2redes",
-            user="postgres",
-            password="password",
-            host="localhost",
-            port='5432'
-        )
-        cursor_obj = con.cursor()
-        list_tokens = token.split("|")
-        if mode == 1:
-            print("El robot encontró el pedido ")
-            cursor_obj.execute(
-                "UPDATE PEDIDOS SET STATUS = 'CANCELLED' WHERE CLIENT = \'" + list_tokens[0] + "\' AND ID = \'" + list_tokens[1] + "\' AND STATUS = 'PROCESSING'")
-
-        if mode == 2:
-            print("Pedido cancelado, no se empaqueto el pedido: ")
-        else:
-            print("El robot la ha cagado y ha perdido el paquete: ")
-
-
-
-    def on_request_repartidor(ch, method, props, body):
-        token = body.decode()
-        print("Rep message received:" + token)
-
     def send_Robot(self, id):
-        print("llegue " + id)
         self.corr_id = str(uuid.uuid4())
         self.channel2.basic_publish(
-            exchange='',
-            routing_key='rpc_queue_robots',
-            properties=pika.BasicProperties(
-                reply_to=self.callback_queue1,
-                correlation_id=self.corr_id,
-            ),
-            body=str(id))
-        
-        print("llegue2212222")
-        self.connection.process_data_events(time_limit=None)
+            exchange='', routing_key='send_to_robot', body=str(id))
+
+
+    def on_request_robot(self, ch, method, props, body):
         print("Respuesta del robot:")
-        print(self.response.decode())
-        if (int(self.response.decode()) == OK):
-            # llamamos al repartidor
-            self.send_Repartidore
-        else:
-            return ERROR
+        print(body.decode())
+        return body.decode()
+        
+
+    def on_request_repartidor(self, ch, method, props, body):
+        self.response = body
+
+    
+
 
 
 def main():
