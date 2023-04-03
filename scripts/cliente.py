@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os
+import re
 import sys
 import uuid
 import pika
@@ -145,7 +146,13 @@ class Client(object):
             body=pedido)
         self.connection.process_data_events(time_limit=None)
 
-        print(self.response.decode())
+        pedidos = self.response.decode()
+        print("ID  | Producto | Cantidad | Cliente | Estado ")
+        pedidos = eval(pedidos)
+        for pedido in pedidos:
+            print("{:<4}".format(str(pedido[0])) + "| " + "{:<9}".format(str(pedido[1])) + "| " + "{:<9}".format(
+                str(pedido[2])) + "| " + "{:<8}".format(str(pedido[3])) + "| " + str(pedido[4]))
+
         self.menu()
 
     def cancelar_pedido(self):

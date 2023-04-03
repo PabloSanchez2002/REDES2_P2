@@ -15,6 +15,7 @@ class Controlador(object):
         self.connection = pika.BlockingConnection(
             pika.ConnectionParameters(host='localhost'))
 
+        #Cola clientes
         print("Creating queues.......")
         self.channel1 = self.connection.channel()
         self.channel1.queue_declare(queue='rpc_queue_cliente')
@@ -22,12 +23,14 @@ class Controlador(object):
         self.channel1.basic_consume(
             queue='rpc_queue_cliente', on_message_callback=self.on_request_client)
         
+        # Cola robots
         self.channel2 = self.connection.channel()
         self.channel2.queue_declare(queue='rpc_queue_robot')
         self.channel2.basic_qos(prefetch_count=1)
         self.channel2.basic_consume(
             queue='rpc_queue_robot', on_message_callback=self.on_request_robot)
         
+        # Cola repartidores
         self.channel2 = self.connection.channel()
         self.channel2.queue_declare(queue='rpc_queue_repartidor')
         self.channel2.basic_qos(prefetch_count=1)
@@ -37,7 +40,7 @@ class Controlador(object):
 
         self.create_database()
         self.create_tables()
-        print(" [x] Awaiting RPC requests")
+        print(" [x] Esperando peticiones cliente")
         self.channel1.start_consuming()
 
 
@@ -123,6 +126,8 @@ class Controlador(object):
         cursor_obj = con.cursor()
 
         if mode == 1:
+            # Registrar cliente
+            
             cursor_obj.execute(
                 "SELECT COUNT(*) as count FROM CLIENTES WHERE NOMBRE = \'" + token + "\'")
             result = cursor_obj.fetchall()
@@ -143,6 +148,8 @@ class Controlador(object):
             else:
                 response = ERROR
         elif mode == 2:
+            # Crear pedido  
+
             list_tokens = token.split("|")
             print("Pedido recibido: "+str(list_tokens))
             cursor_obj.execute(
@@ -151,13 +158,16 @@ class Controlador(object):
             response = OK
 
         elif mode == 3:
+            # Listar pedidos
+
             cursor_obj.execute(
                 "SELECT * FROM PEDIDOS WHERE CLIENT = \'" + token + "\'")
             response = cursor_obj.fetchall()
-            
+        
         elif mode == 4:
+            # Cancelar pedido
+
             list_tokens = token.split("|")
-            # count entryes in table pedidos where where client = list_tokens[0] and ID = list_tokens[1] and status is PROCESSING
             cursor_obj.execute(
                 "SELECT COUNT(*) as count FROM PEDIDOS WHERE CLIENT = \'" + list_tokens[0] + "\' AND ID = \'" + list_tokens[1] + "\' AND STATUS <> 'PROCESSING'")
             result = cursor_obj.fetchall()
