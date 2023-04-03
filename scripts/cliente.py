@@ -20,7 +20,7 @@ class Client(object):
         self.channel = self.connection.channel()
         self.nombre = None
 
-        result = self.channel.queue_declare(queue='', exclusive=True)
+        result = self.channel.queue_declare(queue='rpc_queue_cliente')
         self.callback_queue = result.method.queue
 
         self.channel.basic_consume(
@@ -73,6 +73,7 @@ class Client(object):
     def on_response(self, ch, method, props, body):
         if self.corr_id == props.correlation_id:
             self.response = body
+        
 
     def login(self):
         os.system('cls' if os.name == 'nt' else 'clear')
@@ -171,8 +172,7 @@ class Client(object):
             ),
             body=pedido)
         self.connection.process_data_events(time_limit=None)
-
-        if self.response.decode() == OK:
+        if (int(self.response.decode()) == OK):
             print("Pedido cancelado correctamente")
         else:
             print("Error al cancelar pedido")

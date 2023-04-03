@@ -1,13 +1,18 @@
 #!/usr/bin/env python
-import uuid
 import pika
-import psycopg2
 import sys
 import os
+import time
+import random
+
 
 ERROR = 0
 OK = 1
 REGISTERED = 2
+
+MAX_T = 5
+MIN_T = 1
+p_almacen = 0.1
 
 
 class robot(object):
@@ -16,46 +21,33 @@ class robot(object):
             pika.ConnectionParameters(host='localhost'))
 
         self.channel = self.connection.channel()
-        self.nombre = None
-
-        result = self.channel.queue_declare(queue='', exclusive=True)
-        self.callback_queue = result.method.queue
-
+        self.channel.queue_declare(queue='rpc_queue_robot')
+        self.channel.basic_qos(prefetch_count=1)
         self.channel.basic_consume(
-            queue=self.callback_queue,
-            on_message_callback=self.on_response,
-            auto_ack=True)
-
-        self.corr_id = None
-
-        #self.response = self.connect()
+            queue='rpc_queue_robot', on_message_callback=self.on_response)
         
-        self.connection.close()
+        
+        os.system('cls' if os.name == 'nt' else 'clear')
+        print("Robot operativo....")
 
-    #def connect(self):
-    #    os.system('cls' if os.name == 'nt' else 'clear')
-    #    self.response = None
-    #    self.corr_id = str(uuid.uuid4())
-    #    
-    #    self.channel.basic_publish(
-    #        exchange='',
-    #        routing_key='rpc_queue_robot',
-    #        properties=pika.BasicProperties(
-    #            reply_to=self.callback_queue,
-    #            correlation_id=self.corr_id,
-    #        ),
-    #        body=1
-    #    )
-    #    while self.response is None:
-    #        self.connection.process_data_events()
-    #    return self.response
-    
+        self.channel.start_consuming()
+        #self.connection.close()
 
-    def on_response(self):
-        pass
+    def on_response(self, ch, method, props, body):
+        tiempo_espera = random.uniform(MAX_T, MIN_T)
+        print(f"Buscando el pedido durante {tiempo_espera:.2f} segundos...")
+        time.sleep(tiempo_espera)
+        if random.random() < p_almacen:
+            print("Pedido encontrado")
+            return OK
+        else:
+            print("Pedido no encontrado")
+            return ERROR
+        
+              
 
 def main():
-    contr = robot()
+    rob = robot()
 
 
 if __name__ == '__main__':
