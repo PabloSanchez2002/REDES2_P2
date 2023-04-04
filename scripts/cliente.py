@@ -50,12 +50,11 @@ class Client(object):
         try:
             opcion = int(input())
             if opcion == 1:
-                #response = int(self.new_pedido())
-                #if(response == OK):
-                #    print("Pedido recibido por el controlador\n\n")
-                #if (response == ERROR):
-                #    print("Error al recibir pedido\n\n")
-                self.new_pedido()
+                response = int(self.new_pedido())
+                if(response == OK):
+                    print("Pedido recibido por el controlador\n")
+                else:
+                    print("Error al recibir pedido\n")
                 self.menu()
 
             elif opcion == 2:
@@ -124,11 +123,11 @@ class Client(object):
                 correlation_id=self.corr_id,
             ),
             body=pedido)
-        #self.connection.process_data_events(time_limit=None)
+        self.connection.process_data_events(time_limit=None)
 
         print("Pedido enviado!!")
         print("Mira tus pedidos con '2' para obtener información del estado de estos")
-        #return self.response
+        return self.response
 
     def ver_pedidos(self):
         os.system('cls' if os.name == 'nt' else 'clear')

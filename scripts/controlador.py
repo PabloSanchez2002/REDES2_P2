@@ -5,6 +5,8 @@ import pika
 import psycopg2
 import sys
 import os
+import _thread
+
 
 ERROR = 0
 OK = 1
@@ -17,7 +19,7 @@ class Controlador(object):
         self.connection = pika.BlockingConnection(
             pika.ConnectionParameters(host='localhost'))
 
-        #Cola clientes
+        #Cola clientes RPC
         print("Creating queues.......")
         self.channel1 = self.connection.channel()
         self.channel1.queue_declare(queue='rpc_queue_cliente')
@@ -32,31 +34,42 @@ class Controlador(object):
         # Cola respuesta robots
         self.channel3 = self.connection.channel()
         self.channel3.queue_declare(queue='return_from_robot')
-        
         self.channel3.basic_consume(
             queue='return_from_robot',
             on_message_callback=self.on_request_robot,
             auto_ack=True)
 
-        
-        # Cola repartidores
-        #self.channel3 = self.connection.channel()
-        #result2 = self.channel3.queue_declare(
-        #    queue='rpc_queue_repartidor')
-        #self.callback_queue2 = result2.method.queue
-        #self.channel2.basic_consume(
-        #    queue=self.callback_queue2,
-        #    on_message_callback=self.on_request_repartidor,
-        #    auto_ack=True)
-        
+        # Cola envío repartidor
+        self.channel2 = self.connection.channel()
+        self.channel2.queue_declare(queue='send_to_repartidor')
+
+        # Cola respuesta repartidor
+        self.channel3 = self.connection.channel()
+        self.channel3.queue_declare(queue='return_from_repartidor')
+        self.channel3.basic_consume(
+            queue='return_from_repartidor',
+            on_message_callback=self.on_request_repartidor,
+            auto_ack=True)
+
 
         self.corr_id = None
+
+        #try:
+        #    _thread.start_new_thread(self.gestionar_Queues, (0,))
+        #except Exception as e:
+        #    print("Error: unable to start thread")
+        #    print(e)
 
         self.create_database()
         self.create_tables()
         print(" [x] Esperando peticiones cliente")
         self.channel1.start_consuming()
+        self.channel3.start_consuming()
 
+    def gestionar_Queues(self, useless):
+        while True:
+            self.channel1.connection.process_data_events(time_limit=1)
+            self.channel3.connection.process_data_events(time_limit=1)
 
     def create_database(self):
         con = psycopg2.connect(
@@ -217,18 +230,74 @@ class Controlador(object):
         self.corr_id = str(uuid.uuid4())
         self.channel2.basic_publish(
             exchange='', routing_key='send_to_robot', body=str(id))
+        return OK
 
 
     def on_request_robot(self, ch, method, props, body):
-        print("Respuesta del robot:")
-        print(body.decode())
-        return body.decode()
-        
+        print("Respuesta del robot: %r" % body.decode())
+        list_tokens = body.decode().split("|")
+        mode = int(list_tokens[0])
+        token = list_tokens[1]
+        con = psycopg2.connect(
+            database="p2redes",
+            user="postgres",
+            password="password",
+            host="localhost",
+            port='5432'
+        )
+        cursor_obj = con.cursor()
+
+        # Comporbamos que el pedido no ha sido cancelado previamente
+        cursor_obj.execute(
+            "SELECT COUNT(*) as count FROM PEDIDOS WHERE ID = \'" + token + "\' AND STATUS = 'CANCELLED'")
+        result = cursor_obj.fetchall()
+        if (result[0][0] == 1):
+            print("El pedido fue cancelado antes de empaquetarse")
+            
+        else:
+            if mode == 1:
+                print("El robot encontró el pedido ")
+                cursor_obj.execute(
+                    "UPDATE PEDIDOS SET STATUS = 'PACKED' WHERE ID = \'" + token + "\' AND STATUS = 'PROCESSING'")
+                self.send_Repartidor(token, 0)
+
+            elif mode == 0:
+                print("El robot NO encontró el pedido ")
+                cursor_obj.execute(
+                    "UPDATE PEDIDOS SET STATUS = 'NOTFOUND' WHERE ID = \'" + token + "\' AND STATUS = 'PROCESSING'")
+        con.commit()
+        con.close()
+        return
+
+    def send_Repartidor(self, id, tries):
+        send = id + "|" + str(tries)
+        self.corr_id = str(uuid.uuid4())
+        self.channel3.basic_publish(
+            exchange='', routing_key='send_to_repartidor', body=send)
+        return OK
 
     def on_request_repartidor(self, ch, method, props, body):
-        self.response = body
-
-    
+        print("Respuesta del repartidor: %r" % body.decode())
+        list_tokens = body.decode().split("|") #[0] = error/OK [1] = ID [2] = intento
+        mode = int(list_tokens[0])
+        con = psycopg2.connect(
+            database="p2redes",
+            user="postgres",
+            password="password",
+            host="localhost",
+            port='5432'
+        )
+        cursor_obj = con.cursor()
+        if mode == 1:
+            print("Se entregó el paquete ID = " + list_tokens[1])
+        
+        elif mode == 0:
+            if int(list_tokens[2]) >= 2:
+                print("Fallo de entrega del paquete ID = " + list_tokens[1] + "\nSe gotaron todos los intentos")
+            else:
+                print("Fallo de entrega del paquete ID = " + list_tokens[1] + "\nSe procede a reintentar entrega")
+                list_tokens[2] = int(list_tokens[2]) +1
+                self.send_Repartidor(list_tokens[1], list_tokens[2])
 
 
 
