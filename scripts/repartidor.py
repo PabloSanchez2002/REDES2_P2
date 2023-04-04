@@ -12,7 +12,7 @@ REGISTERED = 2
 #espera de 10-20s
 MAX_T = 5
 MIN_T = 1
-p_entrega = 0.1
+p_entrega = 0.3
 
 
 class repartidor(object):
@@ -21,19 +21,20 @@ class repartidor(object):
             pika.ConnectionParameters(host='localhost'))
 
         # Peticion
-        self.channel1 = self.connection.channel()
-        self.channel1.queue_declare(queue='send_to_repartidor')
-        self.channel1.basic_consume(
+        self.channel = self.connection.channel()
+        self.channel.queue_declare(
+            queue='send_to_repartidor', durable=False, auto_delete=True)
+        self.channel.basic_consume(
             queue='send_to_repartidor', on_message_callback=self.on_response, auto_ack=True)
 
         # Respuesta
-        self.channel2 = self.connection.channel()
-        self.channel2.queue_declare(queue='return_from_repartidor')
+        self.channel.queue_declare(
+            queue='return_from_repartidor', durable=False, auto_delete=True)
 
         os.system('cls' if os.name == 'nt' else 'clear')
         print("Repartidor operativo....")
 
-        self.channel1.start_consuming()
+        self.channel.start_consuming()
         # self.connection.close()
 
     def on_response(self, ch, method, props, body):
@@ -50,7 +51,7 @@ class repartidor(object):
             print("Pedido no entregado")
             response = "0|" + body.decode()
 
-        self.channel2.basic_publish(
+        self.channel.basic_publish(
             exchange='', routing_key='return_from_repartidor', body=str(response))
         print(" [x] Enviado %r" % response)
 

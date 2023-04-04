@@ -21,32 +21,31 @@ class Controlador(object):
 
         #Cola clientes RPC
         print("Creating queues.......")
-        self.channel1 = self.connection.channel()
-        self.channel1.queue_declare(queue='rpc_queue_cliente')
-        self.channel1.basic_qos(prefetch_count=1)
-        self.channel1.basic_consume(
+        self.channel = self.connection.channel()
+        self.channel.queue_declare(queue='rpc_queue_cliente')
+        self.channel.basic_qos(prefetch_count=1)
+        self.channel.basic_consume(
             queue='rpc_queue_cliente', on_message_callback=self.on_request_client)
         
         # Cola envío robots
-        self.channel2 = self.connection.channel()
-        self.channel2.queue_declare(queue='send_to_robot')
+        self.channel.queue_declare(queue='send_to_robot', durable=False, auto_delete=True)
         
         # Cola respuesta robots
-        self.channel3 = self.connection.channel()
-        self.channel3.queue_declare(queue='return_from_robot')
-        self.channel3.basic_consume(
+        self.channel.queue_declare(
+            queue='return_from_robot', durable=False, auto_delete=True)
+        self.channel.basic_consume(
             queue='return_from_robot',
             on_message_callback=self.on_request_robot,
             auto_ack=True)
 
         # Cola envío repartidor
-        self.channel2 = self.connection.channel()
-        self.channel2.queue_declare(queue='send_to_repartidor')
+        self.channel.queue_declare(
+            queue='send_to_repartidor', durable=False, auto_delete=True)
 
         # Cola respuesta repartidor
-        self.channel3 = self.connection.channel()
-        self.channel3.queue_declare(queue='return_from_repartidor')
-        self.channel3.basic_consume(
+        self.channel.queue_declare(
+            queue='return_from_repartidor', durable=False, auto_delete=True)
+        self.channel.basic_consume(
             queue='return_from_repartidor',
             on_message_callback=self.on_request_repartidor,
             auto_ack=True)
@@ -63,13 +62,12 @@ class Controlador(object):
         self.create_database()
         self.create_tables()
         print(" [x] Esperando peticiones cliente")
-        self.channel1.start_consuming()
-        self.channel3.start_consuming()
+        self.channel.start_consuming()
 
     def gestionar_Queues(self, useless):
         while True:
-            self.channel1.connection.process_data_events(time_limit=1)
-            self.channel3.connection.process_data_events(time_limit=1)
+            self.channel.connection.process_data_events(time_limit=1)
+            self.channel.connection.process_data_events(time_limit=1)
 
     def create_database(self):
         con = psycopg2.connect(
@@ -228,7 +226,7 @@ class Controlador(object):
 
     def send_Robot(self, id):
         self.corr_id = str(uuid.uuid4())
-        self.channel2.basic_publish(
+        self.channel.basic_publish(
             exchange='', routing_key='send_to_robot', body=str(id))
         return OK
 
@@ -272,7 +270,7 @@ class Controlador(object):
     def send_Repartidor(self, id, tries):
         send = id + "|" + str(tries)
         self.corr_id = str(uuid.uuid4())
-        self.channel3.basic_publish(
+        self.channel.basic_publish(
             exchange='', routing_key='send_to_repartidor', body=send)
         return OK
 
@@ -290,15 +288,23 @@ class Controlador(object):
         cursor_obj = con.cursor()
         if mode == 1:
             print("Se entregó el paquete ID = " + list_tokens[1])
+            cursor_obj.execute(
+                "UPDATE PEDIDOS SET STATUS = 'DELIVERED' WHERE ID = \'" + list_tokens[1] + "\' AND STATUS = 'PACKED'")
         
         elif mode == 0:
+            print("Fallo de entrega del paquete ID = " + list_tokens[1])
             if int(list_tokens[2]) >= 2:
-                print("Fallo de entrega del paquete ID = " + list_tokens[1] + "\nSe gotaron todos los intentos")
+                print("Se gotaron todos los intentos")
+                cursor_obj.execute(
+                    "UPDATE PEDIDOS SET STATUS = 'NOTDELIVERED' WHERE ID = \'" + list_tokens[1] + "\' AND STATUS = 'PACKED'")
             else:
-                print("Fallo de entrega del paquete ID = " + list_tokens[1] + "\nSe procede a reintentar entrega")
+                print("Se procede a reintentar entrega")
                 list_tokens[2] = int(list_tokens[2]) +1
                 self.send_Repartidor(list_tokens[1], list_tokens[2])
-
+        
+        con.commit()
+        con.close()
+        return
 
 
 def main():

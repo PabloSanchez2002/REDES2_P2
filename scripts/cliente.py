@@ -19,10 +19,11 @@ class Client(object):
         self.connection = pika.BlockingConnection(
             pika.ConnectionParameters(host='localhost'))
 
-        self.channel1 = self.connection.channel()
-        result = self.channel1.queue_declare(queue='rpc_queue_cliente')
+        self.channel = self.connection.channel()
+        result = self.channel.queue_declare(
+            queue='rpc_queue_cliente', durable=False, auto_delete=True)
         self.callback_queue = result.method.queue
-        self.channel1.basic_consume(
+        self.channel.basic_consume(
             queue=self.callback_queue,
             on_message_callback=self.on_response,
             auto_ack=True)
@@ -49,7 +50,13 @@ class Client(object):
         print("Introduce numero: ", end="")
         try:
             opcion = int(input())
-            if opcion == 1:
+
+            if opcion < 1 or opcion > 3:
+                os.system('cls' if os.name == 'nt' else 'clear')
+                print("Opción no válida seleccione 1, 2 o 3")
+                self.menu()
+
+            elif opcion == 1:
                 response = int(self.new_pedido())
                 if(response == OK):
                     print("Pedido recibido por el controlador\n")
@@ -80,7 +87,7 @@ class Client(object):
         s = input()
         self.nombre = s
         s = ("1"+s)
-        self.channel1.basic_publish(
+        self.channel.basic_publish(
             exchange='',
             routing_key='rpc_queue_cliente',
             properties=pika.BasicProperties(
@@ -115,7 +122,7 @@ class Client(object):
         cantidad = input()
         pedido = ("2" + product + "|" + cantidad + "|" + self.nombre)
 
-        self.channel1.basic_publish(
+        self.channel.basic_publish(
             exchange='',
             routing_key='rpc_queue_cliente',
             properties=pika.BasicProperties(
@@ -134,7 +141,7 @@ class Client(object):
         print("Ver pedidos")
         pedido = ("3" + self.nombre)
 
-        self.channel1.basic_publish(
+        self.channel.basic_publish(
             exchange='',
             routing_key='rpc_queue_cliente',
             properties=pika.BasicProperties(
@@ -160,7 +167,7 @@ class Client(object):
         id = input()
         pedido = ("4" + self.nombre + "|" + id)
 
-        self.channel1.basic_publish(
+        self.channel.basic_publish(
             exchange='',
             routing_key='rpc_queue_cliente',
             properties=pika.BasicProperties(
