@@ -9,36 +9,54 @@ import random
 ERROR = 0
 OK = 1
 REGISTERED = 2
-#espera 5-10s
+#espera 5-10s -------------------------------------------
 MAX_T = 5
 MIN_T = 1
 p_almacen = 0.5
 
+SEND_ROBOT = "2321-02_send_to_robot"
+RETURN_REBOT = "2321-02_return_from_robot"
 
-class robot(object):
+
+class Robot(object):
+    """Clase Robot encargado de empaquetar un pedido
+
+    Args:
+        object (_type_): empaqueta pedido
+    """
     def __init__(self) -> None:
+        """Inicia.izador de clase
+        """
         self.connection = pika.BlockingConnection(
             pika.ConnectionParameters(host='localhost'))
         
         # Peticion
         self.channel = self.connection.channel()
         self.channel.queue_declare(
-            queue='send_to_robot', durable=False, auto_delete=True)
+            queue=SEND_ROBOT, durable=False, auto_delete=True)
         self.channel.basic_consume(
-            queue='send_to_robot', on_message_callback=self.on_response, auto_ack=True)
+            queue=SEND_ROBOT, on_message_callback=self.on_response, auto_ack=True)
         
         # Respuesta
         self.channel.queue_declare(
-            queue='return_from_robot', durable=False, auto_delete=True)
+            queue=RETURN_REBOT, durable=False, auto_delete=True)
        
 
         os.system('cls' if os.name == 'nt' else 'clear')
         print("Robot operativo....")
 
         self.channel.start_consuming()
-        #self.connection.close()
+        self.connection.close()
 
     def on_response(self, ch, method, props, body):
+        """Callback de la peticion del controlador
+
+        Args:
+            ch (_type_): canal de referencia
+            method (_type_): metodo (no usado)
+            props (_type_): info del mensaje
+            body (_type_): contenido del mensaje
+        """
 
         tiempo_espera = random.uniform(MAX_T, MIN_T)
         print("Buscando el pedido Nº" + body.decode() +
@@ -52,12 +70,14 @@ class robot(object):
             response = "0|" + body.decode()
 
         self.channel.basic_publish(
-            exchange='', routing_key='return_from_robot', body=str(response))
+            exchange='', routing_key=RETURN_REBOT, body=str(response))
         print(" [x] Enviado %r" % response)
               
 
 def main():
-    rob = robot()
+    """Punto de entrada de ejecución
+    """
+    rob = Robot()
 
 
 if __name__ == '__main__':

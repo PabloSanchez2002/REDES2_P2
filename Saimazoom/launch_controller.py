@@ -1,19 +1,32 @@
 #!/usr/bin/env python
-import time
+
 import uuid
 import pika
 import psycopg2
 import sys
 import os
-import _thread
-
 
 ERROR = 0
 OK = 1
 REGISTERED = 2
 
+#Queues
+RPC_CLIENT = "2321-02_rpc_queue_cliente"
+SEND_ROBOT = "2321-02_send_to_robot"
+RETURN_REBOT = "2321-02_return_from_robot"
+SEND_REPARTIDOR = "2321-02_send_to_repartidor"
+RETURN_REPARTIDOR = "2321-02_return_from_repartidor"
+
 class Controlador(object):
+    """Clase para el Controlador
+
+    Args:
+        object (Controlador): Se encarga de la logistica del sistema, y conectar todos los componentes entre sí mediante colas de mensajes
+    """
+
     def __init__(self):
+        """Incializador de clase
+        """
         os.system('cls' if os.name == 'nt' else 'clear')
 
         self.connection = pika.BlockingConnection(
@@ -22,54 +35,50 @@ class Controlador(object):
         #Cola clientes RPC
         print("Creating queues.......")
         self.channel = self.connection.channel()
-        self.channel.queue_declare(queue='rpc_queue_cliente')
+        self.channel.queue_declare(queue=RPC_CLIENT)
         self.channel.basic_qos(prefetch_count=1)
         self.channel.basic_consume(
-            queue='rpc_queue_cliente', on_message_callback=self.on_request_client)
+            queue=RPC_CLIENT, on_message_callback=self.on_request_client)
         
         # Cola envío robots
-        self.channel.queue_declare(queue='send_to_robot', durable=False, auto_delete=True)
+        self.channel.queue_declare(queue=SEND_ROBOT, durable=False, auto_delete=True)
         
         # Cola respuesta robots
         self.channel.queue_declare(
-            queue='return_from_robot', durable=False, auto_delete=True)
+            queue=RETURN_REBOT, durable=False, auto_delete=True)
         self.channel.basic_consume(
-            queue='return_from_robot',
+            queue=RETURN_REBOT,
             on_message_callback=self.on_request_robot,
             auto_ack=True)
 
         # Cola envío repartidor
         self.channel.queue_declare(
-            queue='send_to_repartidor', durable=False, auto_delete=True)
+            queue=SEND_REPARTIDOR, durable=False, auto_delete=True)
 
         # Cola respuesta repartidor
         self.channel.queue_declare(
-            queue='return_from_repartidor', durable=False, auto_delete=True)
+            queue=RETURN_REPARTIDOR, durable=False, auto_delete=True)
         self.channel.basic_consume(
-            queue='return_from_repartidor',
+            queue=RETURN_REPARTIDOR,
             on_message_callback=self.on_request_repartidor,
             auto_ack=True)
 
 
         self.corr_id = None
 
-        #try:
-        #    _thread.start_new_thread(self.gestionar_Queues, (0,))
-        #except Exception as e:
-        #    print("Error: unable to start thread")
-        #    print(e)
+        if (len(sys.argv) > 1):
+            if sys.argv[1] == "cleanDB":
+                self.create_database()
+                self.create_tables()
 
-        self.create_database()
-        self.create_tables()
         print(" [x] Esperando peticiones cliente")
         self.channel.start_consuming()
+        self.connection.close()
 
-    def gestionar_Queues(self, useless):
-        while True:
-            self.channel.connection.process_data_events(time_limit=1)
-            self.channel.connection.process_data_events(time_limit=1)
 
     def create_database(self):
+        """Crea la base de datos que se usará en el sistema
+        """
         con = psycopg2.connect(
             database="postgres",
             user="postgres",
@@ -97,6 +106,8 @@ class Controlador(object):
         con.close()
 
     def create_tables(self):
+        """Crea las tablas de la base de datos que será usadas en el sistema
+        """
         con = psycopg2.connect(
             database="p2redes",
             user="postgres",
@@ -136,6 +147,14 @@ class Controlador(object):
         con.close()
 
     def on_request_client(self, ch, method, props, body):
+        """Atiende una petición del cliente
+
+        Args:
+            ch (_type_): canal para el RPC
+            method (_type_): metodo (no usado)
+            props (_type_): info del mensaje
+            body (_type_): contenido del mensaje
+        """
         token = body.decode()
         print("Cli request received:" + token)
         response = ERROR
@@ -176,6 +195,16 @@ class Controlador(object):
 
 
     def register_Client(self, token, con, cursor_obj):
+        """Registra un cliente en la base de datos del dsistema
+
+        Args:
+            token (_type_): mensaje a procesar
+            con (_type_): interfaz postres
+            cursor_obj (_type_): cursor postgres
+
+        Returns:
+            int: OK/ERROR
+        """
         cursor_obj.execute(
             "SELECT COUNT(*) as count FROM CLIENTES WHERE NOMBRE = \'" + token + "\'")
         result = cursor_obj.fetchall()
@@ -193,6 +222,16 @@ class Controlador(object):
 
 
     def crear_Pedido(self, token, con, cursor_obj):
+        """Crea un pedido para un cliente
+
+        Args:
+            token (_type_): mensaje a procesar
+            con (_type_): interfaz postres
+            cursor_obj (_type_): cursor postgres
+
+        Returns:
+            int: respuesta del envío del robot
+        """
 
         list_tokens = token.split("|")
         print("Pedido recibido: "+str(list_tokens))
@@ -206,11 +245,30 @@ class Controlador(object):
         
     
     def listar_Pedidos(self, token, cursor_obj):
+        """Retorna la lista de pedidos asociados a este cliente
+
+        Args:
+            token (_type_): mensaje a procesar
+            cursor_obj (_type_): cursor postgres
+
+        Returns:
+            str: lista de pedidos asociados a este cliente
+        """
         cursor_obj.execute(
             "SELECT * FROM PEDIDOS WHERE CLIENT = \'" + token + "\'")
         return cursor_obj.fetchall()
 
     def cancelar_Pedido(self, token, con, cursor_obj):
+        """Cancela un pedido si todavía es posible
+
+        Args:
+            token (_type_): mensaje a procesar
+            con (_type_): interfaz postres
+            cursor_obj (_type_): cursor postgres
+
+        Returns:
+            int: OK/ERROR
+        """
         list_tokens = token.split("|")
         cursor_obj.execute(
               "SELECT COUNT(*) as count FROM PEDIDOS WHERE CLIENT = \'" + list_tokens[0] + "\' AND ID = \'" + list_tokens[1] + "\' AND STATUS <> 'PROCESSING'")
@@ -225,13 +283,29 @@ class Controlador(object):
         
 
     def send_Robot(self, id):
+        """Sends message to robot
+
+        Args:
+            id (int): ID del pedido
+
+        Returns:
+            int: OK
+        """
         self.corr_id = str(uuid.uuid4())
         self.channel.basic_publish(
-            exchange='', routing_key='send_to_robot', body=str(id))
+            exchange='', routing_key=SEND_ROBOT, body=str(id))
         return OK
 
 
     def on_request_robot(self, ch, method, props, body):
+        """Callback de respuesta del robot
+
+        Args:
+            ch (_type_): canal de referencia
+            method (_type_): metodo (no usado)
+            props (_type_): info del mensaje
+            body (_type_): contenido del mensaje
+        """
         print("Respuesta del robot: %r" % body.decode())
         list_tokens = body.decode().split("|")
         mode = int(list_tokens[0])
@@ -268,13 +342,30 @@ class Controlador(object):
         return
 
     def send_Repartidor(self, id, tries):
+        """Envio de mensaje al repartidor
+
+        Args:
+            id (int): ID del pedido
+            tries (int): número de intentos de entrega (de 0 hasta 2)
+
+        Returns:
+            int: OK
+        """
         send = id + "|" + str(tries)
         self.corr_id = str(uuid.uuid4())
         self.channel.basic_publish(
-            exchange='', routing_key='send_to_repartidor', body=send)
+            exchange='', routing_key=SEND_REPARTIDOR, body=send)
         return OK
 
     def on_request_repartidor(self, ch, method, props, body):
+        """Callback de respuesta a mensaje del repartidor
+
+        Args:
+            ch (_type_): canal de referencia
+            method (_type_): metodo (no usado)
+            props (_type_): info del mensaje
+            body (_type_): contenido del mensaje
+        """
         print("Respuesta del repartidor: %r" % body.decode())
         list_tokens = body.decode().split("|") #[0] = error/OK [1] = ID [2] = intento
         mode = int(list_tokens[0])
@@ -308,6 +399,8 @@ class Controlador(object):
 
 
 def main():
+    """Punto de entrada del programa
+    """
     controlador = Controlador()
 
 

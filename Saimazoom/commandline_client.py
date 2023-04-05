@@ -1,27 +1,31 @@
 #!/usr/bin/env python
 import os
-import re
 import sys
 import uuid
 import pika
-import _thread
-import asyncio
-
 
 ERROR = 0
 OK = 1
 REGISTERED = 2
 
+RPC_CLIENT = "2321-02_rpc_queue_cliente"
 
 class Client(object):
+    """Clase cliente del sistema
+
+    Args:
+        object (_type_): se loggea, realiza, consulta y cancela pedidos.
+    """
 
     def __init__(self):
+        """Inicializador de clase
+        """
         self.connection = pika.BlockingConnection(
             pika.ConnectionParameters(host='localhost'))
 
         self.channel = self.connection.channel()
         result = self.channel.queue_declare(
-            queue='rpc_queue_cliente', durable=False, auto_delete=True)
+            queue='', exclusive=True, durable=False, auto_delete=True)
         self.callback_queue = result.method.queue
         self.channel.basic_consume(
             queue=self.callback_queue,
@@ -37,10 +41,20 @@ class Client(object):
         self.connection.close()
 
     def on_response(self, ch, method, props, body):
+        """Callback de la cola RPC
+
+        Args:
+            ch (_type_): canal de referencia
+            method (_type_): metodo (no usado)
+            props (_type_): info del mensaje
+            body (_type_): contenido del mensaje
+        """
         if self.corr_id == props.correlation_id:
             self.response = body
 
     def menu(self):
+        """Función de menu por consola para el cliente
+        """
         print("//--------------------------------------//")
         print("Estas registrado como el cliente: "+ self.nombre + "\n")
         print("Que quieres hacer: ")
@@ -80,6 +94,11 @@ class Client(object):
     
 
     def login(self):
+        """Funcion de login/signup
+
+        Returns:
+            _type_: respuesta del controlador
+        """
         os.system('cls' if os.name == 'nt' else 'clear')
         self.response = None
         self.corr_id = str(uuid.uuid4())
@@ -89,7 +108,7 @@ class Client(object):
         s = ("1"+s)
         self.channel.basic_publish(
             exchange='',
-            routing_key='rpc_queue_cliente',
+            routing_key=RPC_CLIENT,
             properties=pika.BasicProperties(
                 reply_to=self.callback_queue,
                 correlation_id=self.corr_id,
@@ -100,6 +119,11 @@ class Client(object):
 
         
     def login_response(self, response):
+        """Función que valida la respuesta del controlador
+
+        Args:
+            response (int): codigo de respuesta del controlador
+        """
         response = int(response)
         if (response == ERROR):
             print("Error al registrar")
@@ -115,6 +139,11 @@ class Client(object):
             print("Error en respuesta, se recibio:" + response)
 
     def new_pedido(self):
+        """Crea un nuevo pedido para el cliente
+
+        Returns:
+            _type_: respuesta del controlador
+        """
         os.system('cls' if os.name == 'nt' else 'clear')
         print("Introduce el nombre del producto: ", end="")
         product = input()
@@ -124,7 +153,7 @@ class Client(object):
 
         self.channel.basic_publish(
             exchange='',
-            routing_key='rpc_queue_cliente',
+            routing_key=RPC_CLIENT,
             properties=pika.BasicProperties(
                 reply_to=self.callback_queue,
                 correlation_id=self.corr_id,
@@ -137,13 +166,15 @@ class Client(object):
         return self.response
 
     def ver_pedidos(self):
+        """Pregunta al servidor por los pedidos que tiene a su nombre, y los muestra por terminal 
+        """
         os.system('cls' if os.name == 'nt' else 'clear')
         print("Ver pedidos")
         pedido = ("3" + self.nombre)
 
         self.channel.basic_publish(
             exchange='',
-            routing_key='rpc_queue_cliente',
+            routing_key=RPC_CLIENT,
             properties=pika.BasicProperties(
                 reply_to=self.callback_queue,
                 correlation_id=self.corr_id,
@@ -161,6 +192,8 @@ class Client(object):
         self.menu()
 
     def cancelar_pedido(self):
+        """Cancela un pedido del cliente
+        """
         os.system('cls' if os.name == 'nt' else 'clear')
         print("Cancelar pedido")
         print("Introduce indice de pedido que quieras cancelar: ", end = "")
@@ -169,7 +202,7 @@ class Client(object):
 
         self.channel.basic_publish(
             exchange='',
-            routing_key='rpc_queue_cliente',
+            routing_key=RPC_CLIENT,
             properties=pika.BasicProperties(
                 reply_to=self.callback_queue,
                 correlation_id=self.corr_id,
@@ -184,6 +217,8 @@ class Client(object):
 
 
 def main():
+    """Punto de entrada de ejecución
+    """
     cliente = Client()
     
 if __name__ == '__main__':
