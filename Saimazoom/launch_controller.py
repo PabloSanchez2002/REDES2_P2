@@ -296,7 +296,6 @@ class Controlador(object):
             exchange='', routing_key=SEND_ROBOT, body=str(id))
         return OK
 
-
     def on_request_robot(self, ch, method, props, body):
         """Callback de respuesta del robot
 
