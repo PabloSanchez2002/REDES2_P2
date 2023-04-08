@@ -41,7 +41,8 @@ class Controlador(object):
             queue=RPC_CLIENT, on_message_callback=self.on_request_client)
         
         # Cola envío robots
-        self.channel.queue_declare(queue=SEND_ROBOT, durable=False, auto_delete=True)
+        self.channel.queue_declare(queue=SEND_ROBOT, durable=False, 
+                                   auto_delete=True)
         
         # Cola respuesta robots
         self.channel.queue_declare(
@@ -124,20 +125,21 @@ class Controlador(object):
 
         # Creating table as per requirement
 
-        cursor.execute("CREATE TABLE CLIENTES( \
-            NOMBRE TEXT NOT NULL UNIQUE)")
+        cursor.execute("""CREATE TABLE CLIENTES( 
+            NOMBRE TEXT NOT NULL UNIQUE)""")
         print("Table CLIENTES created successfully........")
 
         cursor.execute("DROP TABLE IF EXISTS PEDIDOS")
         # Creating table as per requirement
 
-        cursor.execute("CREATE TABLE PEDIDOS( \
-            ID SERIAL PRIMARY KEY, \
-            PRODUCTO TEXT, \
-            CANTIDAD INT, \
-            CLIENT TEXT NOT NULL,\
-            STATUS TEXT NOT NULL,\
-            CONSTRAINT fk_cliente FOREIGN KEY(CLIENT) REFERENCES CLIENTES(NOMBRE) );")
+        cursor.execute("""CREATE TABLE PEDIDOS( 
+            ID SERIAL PRIMARY KEY, 
+            PRODUCTO TEXT, 
+            CANTIDAD INT, 
+            CLIENT TEXT NOT NULL,
+            STATUS TEXT NOT NULL,
+            CONSTRAINT fk_cliente FOREIGN 
+            KEY(CLIENT) REFERENCES CLIENTES(NOMBRE) );""")
         print("Table PEDIDOS created successfully........")
 
 
@@ -206,7 +208,8 @@ class Controlador(object):
             int: OK/ERROR
         """
         cursor_obj.execute(
-            "SELECT COUNT(*) as count FROM CLIENTES WHERE NOMBRE = \'" + token + "\'")
+                "SELECT COUNT(*) as count FROM CLIENTES WHERE NOMBRE = \'" + 
+                token + "\'")
         result = cursor_obj.fetchall()
         if (len(result) > 1):
             return ERROR
@@ -236,7 +239,9 @@ class Controlador(object):
         list_tokens = token.split("|")
         print("Pedido recibido: "+str(list_tokens))
         cursor_obj.execute(
-            "INSERT INTO PEDIDOS VALUES (DEFAULT ,\'" + list_tokens[0] + "\', \'" + list_tokens[1] + "\', \'" + list_tokens[2] + "\', 'PROCESSING') RETURNING ID")
+                "INSERT INTO PEDIDOS VALUES (DEFAULT ,\'" + 
+                list_tokens[0] + "\', \'" + list_tokens[1] + "\', \'" + 
+                list_tokens[2] + "\', 'PROCESSING') RETURNING ID")
         result = cursor_obj.fetchall()
         con.commit()
         # We send a mesasge to the rebot
@@ -271,13 +276,17 @@ class Controlador(object):
         """
         list_tokens = token.split("|")
         cursor_obj.execute(
-              "SELECT COUNT(*) as count FROM PEDIDOS WHERE CLIENT = \'" + list_tokens[0] + "\' AND ID = \'" + list_tokens[1] + "\' AND STATUS <> 'PROCESSING'")
+                "SELECT COUNT(*) as count FROM PEDIDOS WHERE CLIENT = \'" + 
+                list_tokens[0] + "\' AND ID = \'" + 
+                list_tokens[1] + "\' AND STATUS <> 'PROCESSING'")
         result = cursor_obj.fetchall()
         if (result[0][0] >= 1):
             return ERROR
         else:
             cursor_obj.execute(
-                "UPDATE PEDIDOS SET STATUS = 'CANCELLED' WHERE CLIENT = \'" + list_tokens[0] + "\' AND ID = \'" + list_tokens[1] + "\' AND STATUS = 'PROCESSING'")
+                "UPDATE PEDIDOS SET STATUS = 'CANCELLED' WHERE CLIENT = \'" + 
+                list_tokens[0] + "\' AND ID = \'" + 
+                list_tokens[1] + "\' AND STATUS = 'PROCESSING'")
             con.commit()
             return OK
         
@@ -320,7 +329,8 @@ class Controlador(object):
 
         # Comporbamos que el pedido no ha sido cancelado previamente
         cursor_obj.execute(
-            "SELECT COUNT(*) as count FROM PEDIDOS WHERE ID = \'" + token + "\' AND STATUS = 'CANCELLED'")
+                "SELECT COUNT(*) as count FROM PEDIDOS WHERE ID = \'" + 
+                token + "\' AND STATUS = 'CANCELLED'")
         result = cursor_obj.fetchall()
         if (result[0][0] == 1):
             print("El pedido fue cancelado antes de empaquetarse")
@@ -329,13 +339,15 @@ class Controlador(object):
             if mode == 1:
                 print("El robot encontró el pedido ")
                 cursor_obj.execute(
-                    "UPDATE PEDIDOS SET STATUS = 'PACKED' WHERE ID = \'" + token + "\' AND STATUS = 'PROCESSING'")
+                        "UPDATE PEDIDOS SET STATUS = 'PACKED' WHERE ID = \'" + 
+                        token + "\' AND STATUS = 'PROCESSING'")
                 self.send_Repartidor(token, 0)
 
             elif mode == 0:
                 print("El robot NO encontró el pedido ")
                 cursor_obj.execute(
-                    "UPDATE PEDIDOS SET STATUS = 'NOTFOUND' WHERE ID = \'" + token + "\' AND STATUS = 'PROCESSING'")
+                        "UPDATE PEDIDOS SET STATUS = 'NOTFOUND' WHERE ID = \'" + 
+                        token + "\' AND STATUS = 'PROCESSING'")
         con.commit()
         con.close()
         return
@@ -379,14 +391,16 @@ class Controlador(object):
         if mode == 1:
             print("Se entregó el paquete ID = " + list_tokens[1])
             cursor_obj.execute(
-                "UPDATE PEDIDOS SET STATUS = 'DELIVERED' WHERE ID = \'" + list_tokens[1] + "\' AND STATUS = 'PACKED'")
+                    "UPDATE PEDIDOS SET STATUS = 'DELIVERED' WHERE ID = \'" + 
+                    list_tokens[1] + "\' AND STATUS = 'PACKED'")
         
         elif mode == 0:
             print("Fallo de entrega del paquete ID = " + list_tokens[1])
             if int(list_tokens[2]) >= 2:
                 print("Se gotaron todos los intentos")
                 cursor_obj.execute(
-                    "UPDATE PEDIDOS SET STATUS = 'NOTDELIVERED' WHERE ID = \'" + list_tokens[1] + "\' AND STATUS = 'PACKED'")
+                        "UPDATE PEDIDOS SET STATUS = 'NOTDELIVERED' WHERE ID = \'" + 
+                        list_tokens[1] + "\' AND STATUS = 'PACKED'")
             else:
                 print("Se procede a reintentar entrega")
                 list_tokens[2] = int(list_tokens[2]) +1
