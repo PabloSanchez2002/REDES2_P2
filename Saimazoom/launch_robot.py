@@ -9,7 +9,6 @@ import random
 ERROR = 0
 OK = 1
 REGISTERED = 2
-#espera 5-10s -------------------------------------------
 MAX_T = 5
 MIN_T = 1
 p_almacen = 0.5
@@ -27,42 +26,34 @@ class Robot(object):
     def __init__(self) -> None:
         """Inicia.izador de clase
         """
+        os.system('cls' if os.name == 'nt' else 'clear')
         self.connection = pika.BlockingConnection(
             pika.ConnectionParameters(host='localhost'))
-        
-        # Peticion
         self.channel = self.connection.channel()
         self.channel.queue_declare(
             queue=SEND_ROBOT, durable=False, auto_delete=True)
         self.channel.basic_consume(
-            queue=SEND_ROBOT, on_message_callback=self.on_response, auto_ack=True)
-        
-        # Respuesta
+            queue=SEND_ROBOT, on_message_callback=self.on_response, \
+            auto_ack=True)
         self.channel.queue_declare(
             queue=RETURN_REBOT, durable=False, auto_delete=True)
-       
-
-        os.system('cls' if os.name == 'nt' else 'clear')
         print("Robot operativo....")
-
         self.channel.start_consuming()
         self.connection.close()
 
     def on_response(self, ch, method, props, body):
         """Callback de la peticion del controlador
-
         Args:
             ch (_type_): canal de referencia
             method (_type_): metodo (no usado)
             props (_type_): info del mensaje
             body (_type_): contenido del mensaje
         """
-
-        tiempo_espera = random.uniform(MAX_T, MIN_T)
+        tiempo_espera = random.uniform(MAX_T, MIN_T)                                # Tiempo por que tardará en buscar el pedido
         print("Buscando el pedido Nº" + body.decode() +
               " durante" + f"{tiempo_espera: .2f} segundos...")
         time.sleep(tiempo_espera)
-        if random.random() < p_almacen:
+        if random.random() < p_almacen:                                             # Calculo de encontrado o no
             print("Pedido encontrado")
             response = "1|" + body.decode()
         else:
@@ -70,7 +61,7 @@ class Robot(object):
             response = "0|" + body.decode()
 
         self.channel.basic_publish(
-            exchange='', routing_key=RETURN_REBOT, body=str(response))
+            exchange='', routing_key=RETURN_REBOT, body=str(response))              # Envio mensaje a controlador
         print(" [x] Enviado %r" % response)
               
 

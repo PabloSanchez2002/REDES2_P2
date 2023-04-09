@@ -17,7 +17,7 @@ RETURN_REBOT = "2321-02_return_from_robot"
 SEND_REPARTIDOR = "2321-02_send_to_repartidor"
 RETURN_REPARTIDOR = "2321-02_return_from_repartidor"
 
-class Controlador(object):
+class Controller(object):
     """Clase para el Controlador
 
     Args:
@@ -136,13 +136,13 @@ class Controlador(object):
         )
         cursor_obj = con.cursor()                                                   # Según el modo recibido, ejecutará una función del cliente
         if mode == 1:
-            response = self.register_Client(token, con, cursor_obj)
+            response = self.register_client(token, con, cursor_obj)
         elif mode == 2:
-            response = self.crear_Pedido(token, con, cursor_obj)
+            response = self.crear_pedido(token, con, cursor_obj)
         elif mode == 3:
-            response = self.listar_Pedidos(token, cursor_obj)
+            response = self.listar_pedidos(token, cursor_obj)
         elif mode == 4:
-            response = self.cancelar_Pedido(token, con, cursor_obj)   
+            response = self.cancelar_pedido(token, con, cursor_obj)   
         else:
             response = ERROR                                                        # Se ha introducido un valor no válido
         con.close()
@@ -154,7 +154,7 @@ class Controlador(object):
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
 
-    def register_Client(self, token, con, cursor_obj):
+    def register_client(self, token, con, cursor_obj):
         """Registra un cliente en la base de datos del dsistema
 
         Args:
@@ -182,7 +182,7 @@ class Controlador(object):
             return ERROR                                                        # Estado de ERROR, no debería de suceder
 
 
-    def crear_Pedido(self, token, con, cursor_obj):
+    def crear_pedido(self, token, con, cursor_obj):
         """Crea un pedido para un cliente
 
         Args:
@@ -201,9 +201,9 @@ class Controlador(object):
                 list_tokens[2] + "\', 'PROCESSING') RETURNING ID")            # Se crea el pedido a añadir
         result = cursor_obj.fetchall()
         con.commit()
-        return self.send_Robot(result[0][0])                                  # Se envia la información al robot (pedido registrado, se pone en funcionamiento)
+        return self.send_robot(result[0][0])                                  # Se envia la información al robot (pedido registrado, se pone en funcionamiento)
          
-    def listar_Pedidos(self, token, cursor_obj):
+    def listar_pedidos(self, token, cursor_obj):
         """Retorna la lista de pedidos asociados a este cliente
 
         Args:
@@ -217,7 +217,7 @@ class Controlador(object):
             "SELECT * FROM PEDIDOS WHERE CLIENT = \'" + token + "\'")
         return cursor_obj.fetchall()                                         # Se devuelven los pedidos del cliente
 
-    def cancelar_Pedido(self, token, con, cursor_obj):
+    def cancelar_pedido(self, token, con, cursor_obj):
         """Cancela un pedido si todavía es posible
 
         Args:
@@ -244,7 +244,7 @@ class Controlador(object):
             con.commit()
             return OK
         
-    def send_Robot(self, id):
+    def send_robot(self, id):
         """Sends message to robot
 
         Args:
@@ -292,7 +292,7 @@ class Controlador(object):
                 cursor_obj.execute(
                         "UPDATE PEDIDOS SET STATUS = 'PACKED' WHERE ID = \'" + 
                         token + "\' AND STATUS = 'PROCESSING'")
-                self.send_Repartidor(token, 0)
+                self.send_repartidor(token, 0)
 
             elif mode == 0:
                 print("El robot NO encontró el pedido ")                    # No se ha encontrado el pedido
@@ -303,7 +303,7 @@ class Controlador(object):
         con.close()
         return
 
-    def send_Repartidor(self, id, tries):
+    def send_repartidor(self, id, tries):
         """Envio de mensaje al repartidor
 
         Args:
@@ -354,7 +354,7 @@ class Controlador(object):
             else:
                 print("Se procede a reintentar entrega")
                 list_tokens[2] = int(list_tokens[2]) +1
-                self.send_Repartidor(list_tokens[1], list_tokens[2])
+                self.send_repartidor(list_tokens[1], list_tokens[2])
         
         con.commit()
         con.close()
@@ -364,7 +364,7 @@ class Controlador(object):
 def main():
     """Punto de entrada del programa
     """
-    controlador = Controlador()
+    controlador = Controller()
 
 
 if __name__ == '__main__':

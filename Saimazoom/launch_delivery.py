@@ -9,17 +9,15 @@ import random
 ERROR = 0
 OK = 1
 REGISTERED = 2
-
-#espera de 10-20s ----------------------------------------------
-MAX_T = 5
-MIN_T = 1
+MAX_T = 10
+MIN_T = 20
 p_entrega = 0.3
 
 SEND_REPARTIDOR = "2321-02_send_to_repartidor"
 RETURN_REPARTIDOR = "2321-02_return_from_repartidor"
 
 
-class Repartidor(object):
+class Delivery(object):
     """Clase Repartidor, se encarga derepartir un pedido
 
     Args:
@@ -28,23 +26,17 @@ class Repartidor(object):
     def __init__(self) -> None:
         """Inicializador de clase
         """
+        os.system('cls' if os.name == 'nt' else 'clear')
         self.connection = pika.BlockingConnection(
             pika.ConnectionParameters(host='localhost'))
-
-        # Peticion
         self.channel = self.connection.channel()
         self.channel.queue_declare(
             queue=SEND_REPARTIDOR, durable=False, auto_delete=True)
         self.channel.basic_consume(
             queue=SEND_REPARTIDOR, on_message_callback=self.on_response, auto_ack=True)
-
-        # Respuesta
         self.channel.queue_declare(
             queue=RETURN_REPARTIDOR, durable=False, auto_delete=True)
-
-        os.system('cls' if os.name == 'nt' else 'clear')
         print("Repartidor operativo....")
-
         self.channel.start_consuming()
         self.connection.close()
 
@@ -59,25 +51,24 @@ class Repartidor(object):
         """
         list_tokens = body.decode().split("|")
         tiempo_espera = random.uniform(MAX_T, MIN_T)
-        intento = str(int(list_tokens[1]) + 1)
+        intento = str(int(list_tokens[1]) + 1)                                          # Numero de intentos realizados
         print(intento + "º intento de entrega del pedido Nº" +
-              list_tokens[0] + " durante" + f"{tiempo_espera: .2f} segundos... ")
+              list_tokens[0] + " durante" + f"{tiempo_espera: .2f} segundos... ")        
         time.sleep(tiempo_espera)
-        if random.random() < p_entrega:
+        if random.random() < p_entrega:                                                 # Calculo de tiempo de entrega
             print("Pedido entrgado")
             response = "1|" + body.decode()
         else:
             print("Pedido no entregado")
             response = "0|" + body.decode()
-
         self.channel.basic_publish(
-            exchange='', routing_key=RETURN_REPARTIDOR, body=str(response))
+            exchange='', routing_key=RETURN_REPARTIDOR, body=str(response))             # Envio de mensaje a controlador
         print(" [x] Enviado %r" % response)
 
 def main():
     """Punto de entrada de ejecución
     """
-    repart = Repartidor()
+    repart = Delivery()
 
 
 if __name__ == '__main__':

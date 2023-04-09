@@ -16,7 +16,6 @@ class Client(object):
     Args:
         object (_type_): se loggea, realiza, consulta y cancela pedidos.
     """
-
     def __init__(self):
         """Inicializador de clase
         """
@@ -31,12 +30,9 @@ class Client(object):
             queue=self.callback_queue,
             on_message_callback=self.on_response,
             auto_ack=True)
-        
-
         self.nombre = None
         self.corr_id = None
         self.response = None
-        
         self.login_response(str(self.login().decode()))
         self.connection.close()
 
@@ -64,12 +60,10 @@ class Client(object):
         print("Introduce numero: ", end="")
         try:
             opcion = int(input())
-
             if opcion < 1 or opcion > 3:
                 os.system('cls' if os.name == 'nt' else 'clear')
                 print("Opción no válida seleccione 1, 2 o 3")
                 self.menu()
-
             elif opcion == 1:
                 response = int(self.new_pedido())
                 if(response == OK):
@@ -77,21 +71,17 @@ class Client(object):
                 else:
                     print("Error al recibir pedido\n")
                 self.menu()
-
             elif opcion == 2:
                 self.ver_pedidos()
 
             elif opcion == 3:
                 self.cancelar_pedido()
-
         except ValueError:
             os.system('cls' if os.name == 'nt' else 'clear')
             print("Opción no válida seleccione 1, 2 o 3")
             self.menu()
         except KeyboardInterrupt:
             sys.exit(0)
-
-    
 
     def login(self):
         """Funcion de login/signup
@@ -127,11 +117,9 @@ class Client(object):
         response = int(response)
         if (response == ERROR):
             print("Error al registrar")
-
         elif (response == OK):
             print("Log in completo")
             self.menu()
-
         elif (response == REGISTERED):
             print("Cliente registrado")
             self.menu()
@@ -150,7 +138,6 @@ class Client(object):
         print("Introduce la cantidad del producto: ", end="")
         cantidad = input()
         pedido = ("2" + product + "|" + cantidad + "|" + self.nombre)
-
         self.channel.basic_publish(
             exchange='',
             routing_key=RPC_CLIENT,
@@ -160,7 +147,6 @@ class Client(object):
             ),
             body=pedido)
         self.connection.process_data_events(time_limit=None)
-
         print("Pedido enviado!!")
         print("Mira tus pedidos con '2' para obtener información del estado de estos")
         return self.response
@@ -171,7 +157,6 @@ class Client(object):
         os.system('cls' if os.name == 'nt' else 'clear')
         print("Ver pedidos")
         pedido = ("3" + self.nombre)
-
         self.channel.basic_publish(
             exchange='',
             routing_key=RPC_CLIENT,
@@ -181,7 +166,6 @@ class Client(object):
             ),
             body=pedido)
         self.connection.process_data_events(time_limit=None)
-
         pedidos = self.response.decode()
         print("ID  | Producto | Cantidad | Cliente | Estado ")
         pedidos = eval(pedidos)
@@ -199,7 +183,6 @@ class Client(object):
         print("Introduce indice de pedido que quieras cancelar: ", end = "")
         id = input()
         pedido = ("4" + self.nombre + "|" + id)
-
         self.channel.basic_publish(
             exchange='',
             routing_key=RPC_CLIENT,

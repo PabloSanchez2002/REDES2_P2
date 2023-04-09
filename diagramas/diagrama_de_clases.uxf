@@ -1,0 +1,47 @@
+<diagram program="umletino" version="15.1"><zoom_level>10</zoom_level><element><id>UMLClass</id><coordinates><x>460</x><y>40</y><w>210</w><h>50</h></coordinates><panel_attributes>Saimazoom
+--
+</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>660</x><y>80</y><w>240</w><h>130</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;&lt;-</panel_attributes><additional_attributes>10;10;220;10;220;110</additional_attributes></element><element><id>UMLClass</id><coordinates><x>630</x><y>190</y><w>490</w><h>280</h></coordinates><panel_attributes>Controller
+--
+-connection: BlockingConnection
+-channel: Channel
+-corr_id: Id
+--
++ __init__(self): void
++ create_database(self): void
++ create_tables(self): void
++ on_request_client(self, channel, method, props, body ): void
++ register_client(self, channel, method, props, body): status
++ crear_pedido(self, token, con, cursor_obj): send_robot()
++ listar_pedidos(self, token, cursor_obj): pedidos
++ cancelar_pedido(self, token, con, cursor_obj): status
++ send_robot(self, id): status
++ on_request_robot(self, ch, method, props, body): send_repartidor()
++ send_repartidor(self, id, tries): status
++ on_request_repartidor(self, ch, method, props, body): void
+
+
+</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>680</x><y>530</y><w>370</w><h>90</h></coordinates><panel_attributes>Delivery
+--
+-connection: BlockingConnection
+-channel: Channel
+--
++ on_response(self, ch, method, prop, body): void</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>150</x><y>530</y><w>350</w><h>90</h></coordinates><panel_attributes>Robot
+--
+-connection: BlockingConnection
+-channel: Channel
+--
++ on_response(self, ch, method, prop, body): void</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>20</x><y>130</y><w>480</w><h>280</h></coordinates><panel_attributes>Client
+--
+-connection: BlockingConnection
+-channel: Channel
+-nombre: String
+-corr_id: Id
+-response: String
+-login_response: String
+--
++ on_response(self, ch, method, props, body): void
++ login(self): self.response
++ login_response(self, response): void
++ new_pedido(self): self.response
++ ver_pedidos(self): void
++ cancelar_pedido(self): void</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>590</x><y>80</y><w>290</w><h>470</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;&lt;-</panel_attributes><additional_attributes>10;10;10;430;270;430;270;450</additional_attributes></element><element><id>Relation</id><coordinates><x>340</x><y>80</y><w>230</w><h>470</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;&lt;-</panel_attributes><additional_attributes>210;10;210;400;10;400;10;450</additional_attributes></element><element><id>Relation</id><coordinates><x>230</x><y>80</y><w>250</w><h>70</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;&lt;-</panel_attributes><additional_attributes>230;10;10;10;10;50</additional_attributes></element></diagram>
