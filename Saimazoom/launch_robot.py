@@ -26,7 +26,6 @@ class Robot(object):
     def __init__(self) -> None:
         """Inicia.izador de clase
         """
-        os.system('cls' if os.name == 'nt' else 'clear')
         self.connection = pika.BlockingConnection(
             pika.ConnectionParameters(host='localhost'))
         self.channel = self.connection.channel()

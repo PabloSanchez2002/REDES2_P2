@@ -9,8 +9,8 @@ import random
 ERROR = 0
 OK = 1
 REGISTERED = 2
-MAX_T = 10
-MIN_T = 20
+MAX_T = 20
+MIN_T = 10
 p_entrega = 0.3
 
 SEND_REPARTIDOR = "2321-02_send_to_repartidor"
@@ -26,7 +26,6 @@ class Delivery(object):
     def __init__(self) -> None:
         """Inicializador de clase
         """
-        os.system('cls' if os.name == 'nt' else 'clear')
         self.connection = pika.BlockingConnection(
             pika.ConnectionParameters(host='localhost'))
         self.channel = self.connection.channel()
@@ -56,7 +55,7 @@ class Delivery(object):
               list_tokens[0] + " durante" + f"{tiempo_espera: .2f} segundos... ")        
         time.sleep(tiempo_espera)
         if random.random() < p_entrega:                                                 # Calculo de tiempo de entrega
-            print("Pedido entrgado")
+            print("Pedido entregado")
             response = "1|" + body.decode()
         else:
             print("Pedido no entregado")

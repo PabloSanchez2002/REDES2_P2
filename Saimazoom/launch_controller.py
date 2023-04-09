@@ -27,7 +27,6 @@ class Controller(object):
     def __init__(self):
         """Incializador de clase
         """
-        os.system('cls' if os.name == 'nt' else 'clear')                        # limpia la ventana de visualización usando cls -> windows o clear-> linux
 
         self.connection = pika.BlockingConnection(
             pika.ConnectionParameters(host='localhost'))                        # Comienza una conexión bloqueante a la libreria de pika
@@ -347,7 +346,7 @@ class Controller(object):
         elif mode == 0:
             print("Fallo de entrega del paquete ID = " + list_tokens[1])
             if int(list_tokens[2]) >= 2:
-                print("Se gotaron todos los intentos")
+                print("Se agotaron todos los intentos")
                 cursor_obj.execute(
                         "UPDATE PEDIDOS SET STATUS = 'NOTDELIVERED' WHERE ID = \'" + 
                         list_tokens[1] + "\' AND STATUS = 'PACKED'")

@@ -82,9 +82,14 @@ En este punto incluiremos toda la parte de analisis y diseño del sistema:
 
 * **Cliente->Controlador**
 <br />&emsp;**Registro:**
-<br />&emsp; &emsp;body = "nombre_registro" (String)
-<br />&emsp;**Menu:**
-<br />&emsp; &emsp;body = "CASE" (1: Crear Pedido, 2: Ver pedido, 3: Cancelar Pedido)
+<br />&emsp; &emsp;body = "1nombrecliente"
+<br /> &emsp;**RealizarPedido:**
+<br />&emsp; &emsp;body = "2nombreproducto|cantidadproducto|nombrecliente"
+<br />&emsp;**VerPedido:**
+<br />&emsp; &emsp;body = "3nombrecliente"
+<br />&emsp;**CancelarPedido:**
+<br />&emsp; &emsp;body = "4nombrecliente|idpedido"
+
 
 * **Controlador->Robot**
 <br />&emsp;**BuscarPedido:**

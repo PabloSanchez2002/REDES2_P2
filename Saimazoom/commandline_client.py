@@ -61,7 +61,6 @@ class Client(object):
         try:
             opcion = int(input())
             if opcion < 1 or opcion > 3:
-                os.system('cls' if os.name == 'nt' else 'clear')
                 print("Opción no válida seleccione 1, 2 o 3")
                 self.menu()
             elif opcion == 1:
@@ -77,7 +76,6 @@ class Client(object):
             elif opcion == 3:
                 self.cancelar_pedido()
         except ValueError:
-            os.system('cls' if os.name == 'nt' else 'clear')
             print("Opción no válida seleccione 1, 2 o 3")
             self.menu()
         except KeyboardInterrupt:
@@ -89,7 +87,6 @@ class Client(object):
         Returns:
             _type_: respuesta del controlador
         """
-        os.system('cls' if os.name == 'nt' else 'clear')
         self.response = None
         self.corr_id = str(uuid.uuid4())
         print("Introduce tu identificador de cliente: ", end="")
@@ -132,7 +129,6 @@ class Client(object):
         Returns:
             _type_: respuesta del controlador
         """
-        os.system('cls' if os.name == 'nt' else 'clear')
         print("Introduce el nombre del producto: ", end="")
         product = input()
         print("Introduce la cantidad del producto: ", end="")
@@ -154,7 +150,6 @@ class Client(object):
     def ver_pedidos(self):
         """Pregunta al servidor por los pedidos que tiene a su nombre, y los muestra por terminal 
         """
-        os.system('cls' if os.name == 'nt' else 'clear')
         print("Ver pedidos")
         pedido = ("3" + self.nombre)
         self.channel.basic_publish(
@@ -178,7 +173,6 @@ class Client(object):
     def cancelar_pedido(self):
         """Cancela un pedido del cliente
         """
-        os.system('cls' if os.name == 'nt' else 'clear')
         print("Cancelar pedido")
         print("Introduce indice de pedido que quieras cancelar: ", end = "")
         id = input()
