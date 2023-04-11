@@ -81,7 +81,7 @@ En este punto incluiremos toda la parte de analisis y diseño del sistema:
 <br />&emsp; &emsp;body = PEDIDOS_CLIENTE (cursor_obj.fetchall)
 
 * **Cliente->Controlador**
-<br />&emsp;**Registro:**
+<br />&emsp;**Registro: (Usamos prefijos numéricos del 1 al 4 para codificar las llamadas a procesos remotos.)**
 <br />&emsp; &emsp;body = "1nombrecliente"
 <br /> &emsp;**RealizarPedido:**
 <br />&emsp; &emsp;body = "2nombreproducto|cantidadproducto|nombrecliente"
@@ -109,13 +109,45 @@ En este punto incluiremos toda la parte de analisis y diseño del sistema:
 <br />&emsp; &emsp;body = "N|id|intento_nº" (N=0: No entregado, N=1: Entregado) (intento_nº={0,1,2})
 
 # 4. Conclusiones
-    En resumen, hemos modificado un poco el planteamiento inicial ya que en nuestro caso no habrá un actor "ADMIN". El actor ADMIN todo lo que hacía era manejar la base de datos y que la comunicación entre todos los actores fuera correcta asi que hemos hecho que nuestro controlador hiciera tanto el papel de admin como el papel de controlador.
+    En resumen, hemos implementado la practica usando colas RabbitMQ tipo asíncronas y RPC para satisfacer los requisitos de comunicación entre actores del sistema.
+    
+    Las colas RPC son usadas en las comunicaciones Clientes-Controlador ya que el cliente debe ser reactivo a los comandos del usuario, por lo que una comunicación asincrona no era los mas indicado.
+    Para el resto de comunicaciones se ha usado colas asíncronas, ya que no requieren de respuesta inmediata, intervienen esperas largas por parte de los orbots y repaertidores y permite que el controlador encole tareas tanto para los robots como para los repartidores.
 
-    El programa está diseñado para que funcione con varios repartidores, robots y clientes. 
+    El programa está diseñado para que funcione con varios repartidores, robots y clientes de forma concurrente. 
 
     Para comenzar la primera vez que se lance el programa será necesario o bien crear la base de datos manual mente o bien lanzar el controlador con el argumento cleanDB. Este argumento te sirve tanto como para limpiar la base de datos como para crearla inicialmente.
 
     Hemos tenido dudas entre las diferencias entre commandline_client.py y launch_client.py
 
-    En general el proyecto tiene un funcionamiento bastante correcto y hemos cumplido toda la funcionalidad pedida. 
+    El proyecto tiene un funcionamiento correcto y hemos cumplido toda la funcionalidad pedida. 
     Las funcionalidades están probadas en los tests unitarios.
+
+# 5. Algunas cuestiones de diseño:
+    En la práctica se nos pedía tener dos archivos python que funcionarán sobre el cliente. Uno que permitiera testear el cliente y otro que fuera el commandline client que se encargará de la interacción con la linea de comandos. Nosotros esto lo hemos condensado y en vez de desarrollar el launch_client. Lo que hemos desarrollado es varios testers escritos en bash que ejecuten hasta dos clientes al mismo tiempo (Se pueden modificar algún test simplemente copiando y pegando una línea para añadir más clientes).
+    
+    Sobre la base de datos, hemos implementado una base de datos postgres. Nos hemos decantado por esta opción ya que ya habíamos usado la combinación de postgres y python en si1.
+
+    Sobre el registro, hemos hecho que el registro y login sea en el mismo comando. De forma que cuando un cliente hace login, este introduce un nombre de usuario. Si el nombre de usuario está ya en el sistema, se hace login. Si no está en el sistema se hace un registro y luego un log in
+
+# 6. Antes de ejecutar:
+
+En el directorio diagramas encontraréis imagenes con los diagramas y el fichero de los Requisitos.
+
+Para la ejecución de los tests es necesario ejecutarlos desde la carpeta del root. Es decir:
+
+./tests/test_cancel_pedido.sh
+
+Existen 6 test para probar la funcionalidad de los scripts de python. 
+
+
+La primera vez que se ejecuten los programas será necesario ejecutar el siguiente comando:
+
+python3 launch_controller.py cleanDB
+
+Esto creará la base de datos y permitirá los accesos a ella. Para que se permita acceder y crear la base de datos de forma correcta será necesario 
+que exista una base de datos llamada postgres con user postgres y contraseña password sino, no se podrá acceder.
+
+A partir de ahí se necesitan algunas librerías instaladas y una vez todo esté instalado no debería de haber ningún problema de ejecución.
+Para cancelar la ejecución de alguno de los programas se le puede mandar SIGINT con kill o hacer ctr+c
+
