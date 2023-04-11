@@ -27,7 +27,7 @@ class Robot(object):
         """Inicia.izador de clase
         """
         self.connection = pika.BlockingConnection(
-            pika.ConnectionParameters(host='localhost'))
+            pika.ConnectionParameters(host='redes2.ii.uam.es'))
         self.channel = self.connection.channel()
         self.channel.queue_declare(
             queue=SEND_ROBOT, durable=False, auto_delete=True)

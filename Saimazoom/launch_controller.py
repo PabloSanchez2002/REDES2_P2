@@ -29,7 +29,7 @@ class Controller(object):
         """
 
         self.connection = pika.BlockingConnection(
-            pika.ConnectionParameters(host='localhost'))                        # Comienza una conexión bloqueante a la libreria de pika
+            pika.ConnectionParameters(host='redes2.ii.uam.es'))                        # Comienza una conexión bloqueante a la libreria de pika
 
         #Cola clientes RPC
         print("Creating queues.......")

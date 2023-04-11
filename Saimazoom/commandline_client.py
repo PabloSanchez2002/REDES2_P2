@@ -20,7 +20,7 @@ class Client(object):
         """Inicializador de clase
         """
         self.connection = pika.BlockingConnection(
-            pika.ConnectionParameters(host='localhost'))
+            pika.ConnectionParameters(host='redes2.ii.uam.es'))
 
         self.channel = self.connection.channel()
         result = self.channel.queue_declare(
